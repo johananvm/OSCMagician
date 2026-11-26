@@ -1,9 +1,11 @@
-name: Android release
+name: Android build
 
 on:
   push:
+    branches:
+      - "**"
     tags:
-      - "v*"
+      - "**"
 
 permissions:
   contents: write
@@ -45,7 +47,7 @@ jobs:
              [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
              [ -z "$ANDROID_KEY_ALIAS" ] || \
              [ -z "$ANDROID_KEY_PASSWORD" ]; then
-            echo "::error::Configure all four Android signing secrets before creating a release."
+            echo "::error::Configure all four Android signing secrets before building the APK."
             exit 1
           fi
 
@@ -58,12 +60,24 @@ jobs:
           } > android/key.properties
 
       - name: Build release APK
-        run: >-
-          flutter build apk --release
-          --build-name="${GITHUB_REF_NAME#v}"
-          --build-number="${GITHUB_RUN_NUMBER}"
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            flutter build apk --release \
+              --build-name="${GITHUB_REF_NAME#v}" \
+              --build-number="$GITHUB_RUN_NUMBER"
+          else
+            flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: osc-magician-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
       - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: OSC Magician ${{ github.ref_name }}
