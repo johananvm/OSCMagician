@@ -54,33 +54,3 @@ Without `android/key.properties`, release builds are signed with the debug key.
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Android builds and releases
-
-Each branch or tag push builds a signed APK. Download the `osc-magician-apk`
-artifact from the workflow run in GitHub Actions (GitHub requires you to sign
-in, and artifacts expire according to repository retention settings).
-
-Push a `v*` tag (for example, `v1.0.0`) to also publish the APK as a GitHub
-Release. Branch builds use the version name in `pubspec.yaml`; release tags use
-the tag without the `v`. The APK filename includes that version, for example
-`OSCMagician1.0.2.apk`. Both use the workflow run number as Android's version
-code, so an older build cannot normally be installed over a newer one.
-
-Configure these repository Actions secrets before pushing:
-
-- `ANDROID_KEYSTORE_BASE64`: base64-encoded upload keystore
-- `ANDROID_KEYSTORE_PASSWORD`: keystore password
-- `ANDROID_KEY_ALIAS`: signing key alias
-- `ANDROID_KEY_PASSWORD`: signing key password
-
-Create and back up a long-lived keystore securely; do not commit it. On macOS,
-encode it for the `ANDROID_KEYSTORE_BASE64` secret with:
-
-```sh
-base64 -i android/upload-keystore.jks | tr -d '\n'
-```
-
-Keep using the same keystore and key for all builds so they can be installed as
-updates. An APK signed with the local debug key must be uninstalled before
-installing one signed with this release key.
