@@ -69,11 +69,23 @@ jobs:
             flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
           fi
 
+      - name: Name APK
+        id: apk
+        run: |
+          version="$(awk -F= '$1 == "flutter.versionName" { print substr($0, index($0, "=") + 1) }' android/local.properties)"
+          if [[ ! "$version" =~ ^[a-zA-Z0-9][a-zA-Z0-9.+_-]*$ ]]; then
+            echo "::error::Invalid or missing Android version name in android/local.properties."
+            exit 1
+          fi
+          path="build/app/outputs/flutter-apk/OSCMagician${version}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$path"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: osc-magician-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
 
       - name: Publish GitHub release
@@ -84,4 +96,4 @@ jobs:
           generate_release_notes: true
           make_latest: true
           overwrite_files: true
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: ${{ steps.apk.outputs.path }}

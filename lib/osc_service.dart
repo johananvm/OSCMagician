@@ -22,8 +22,10 @@ class OscService {
     _socket = null;
     _boundPort = null;
     try {
-      final socket =
-          await RawDatagramSocket.bind(InternetAddress.anyIPv4, listenPort);
+      final socket = await RawDatagramSocket.bind(
+        InternetAddress.anyIPv4,
+        listenPort,
+      );
       socket.broadcastEnabled = true;
       socket.listen((event) {
         if (event == RawSocketEvent.read) {
@@ -55,10 +57,12 @@ class OscService {
   static Future<List<String>> localIpAddresses() async {
     try {
       final interfaces = await NetworkInterface.list(
-          type: InternetAddressType.IPv4, includeLoopback: false);
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+      );
       return [
         for (final iface in interfaces)
-          for (final addr in iface.addresses) addr.address
+          for (final addr in iface.addresses) addr.address,
       ];
     } catch (_) {
       return [];

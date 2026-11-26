@@ -33,6 +33,9 @@ class _ControlWidgetState extends State<ControlWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (c.type == ControlType.text) return _buildText();
+    if (c.type == ControlType.shape) return _buildShape();
+
     final body = switch (c.type) {
       ControlType.hSlider => _buildHSlider(),
       ControlType.vSlider => _buildVSlider(),
@@ -40,6 +43,9 @@ class _ControlWidgetState extends State<ControlWidget> {
       ControlType.holdButton => _buildButton(_ButtonKind.hold),
       ControlType.toggleButton => _buildButton(_ButtonKind.toggle),
       ControlType.knob => _buildKnob(),
+      ControlType.hMeter => _buildMeter(horizontal: true),
+      ControlType.vMeter => _buildMeter(horizontal: false),
+      ControlType.text || ControlType.shape => const SizedBox(),
     };
 
     return Container(
@@ -49,18 +55,24 @@ class _ControlWidgetState extends State<ControlWidget> {
         border: Border.all(color: c.color.withValues(alpha: 0.6)),
       ),
       padding: const EdgeInsets.all(4),
-      child: Column(
-        children: [
-          if (c.name.isNotEmpty)
-            Text(
-              c.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 11, color: c.color, fontWeight: FontWeight.w600),
-            ),
-          Expanded(child: body),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          children: [
+            // Hide the label when the cell is too short to fit it.
+            if (c.name.isNotEmpty && constraints.maxHeight >= 32)
+              Text(
+                c.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: c.color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }
@@ -68,47 +80,108 @@ class _ControlWidgetState extends State<ControlWidget> {
   // ---- sliders ----
 
   Widget _buildHSlider() {
-    return LayoutBuilder(builder: (context, constraints) {
-      final w = constraints.maxWidth;
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragStart: widget.enabled
-            ? (d) => _setNormalized(d.localPosition.dx / w)
-            : null,
-        onHorizontalDragUpdate: widget.enabled
-            ? (d) => _setNormalized(d.localPosition.dx / w)
-            : null,
-        onTapDown: widget.enabled
-            ? (d) => _setNormalized(d.localPosition.dx / w)
-            : null,
-        child: CustomPaint(
-          size: Size.infinite,
-          painter: _SliderPainter(c.normalized, c.color, horizontal: true),
-        ),
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: widget.enabled
+              ? (d) => _setNormalized(d.localPosition.dx / w)
+              : null,
+          onHorizontalDragUpdate: widget.enabled
+              ? (d) => _setNormalized(d.localPosition.dx / w)
+              : null,
+          onTapDown: widget.enabled
+              ? (d) => _setNormalized(d.localPosition.dx / w)
+              : null,
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: _SliderPainter(c.normalized, c.color, horizontal: true),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildVSlider() {
-    return LayoutBuilder(builder: (context, constraints) {
-      final h = constraints.maxHeight;
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onVerticalDragStart: widget.enabled
-            ? (d) => _setNormalized(1 - d.localPosition.dy / h)
-            : null,
-        onVerticalDragUpdate: widget.enabled
-            ? (d) => _setNormalized(1 - d.localPosition.dy / h)
-            : null,
-        onTapDown: widget.enabled
-            ? (d) => _setNormalized(1 - d.localPosition.dy / h)
-            : null,
-        child: CustomPaint(
-          size: Size.infinite,
-          painter: _SliderPainter(c.normalized, c.color, horizontal: false),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final h = constraints.maxHeight;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragStart: widget.enabled
+              ? (d) => _setNormalized(1 - d.localPosition.dy / h)
+              : null,
+          onVerticalDragUpdate: widget.enabled
+              ? (d) => _setNormalized(1 - d.localPosition.dy / h)
+              : null,
+          onTapDown: widget.enabled
+              ? (d) => _setNormalized(1 - d.localPosition.dy / h)
+              : null,
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: _SliderPainter(c.normalized, c.color, horizontal: false),
+          ),
+        );
+      },
+    );
+  }
+
+  // ---- meter (display only, driven by incoming OSC) ----
+
+  Widget _buildMeter({required bool horizontal}) {
+    return CustomPaint(
+      size: Size.infinite,
+      painter: _MeterPainter(c.normalized, horizontal: horizontal),
+    );
+  }
+
+  // ---- decorations ----
+
+  Widget _buildText() {
+    // Show a placeholder in edit mode so an empty label can still be found.
+    final empty = c.name.isEmpty;
+    if (empty && widget.enabled) return const SizedBox.expand();
+    return LayoutBuilder(
+      builder: (context, constraints) => Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            empty ? 'Label' : c.name,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: (constraints.maxHeight * 0.5).clamp(10.0, 64.0),
+              color: empty ? c.color.withValues(alpha: 0.4) : c.color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      );
-    });
+      ),
+    );
+  }
+
+  Widget _buildShape() {
+    return Container(
+      decoration: BoxDecoration(
+        color: c.color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: c.color, width: 2),
+      ),
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+      alignment: Alignment.topLeft,
+      child: c.name.isEmpty
+          ? null
+          : Text(
+              c.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: c.color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+    );
   }
 
   // ---- buttons ----
@@ -174,8 +247,11 @@ class _ControlWidgetState extends State<ControlWidget> {
           : (d) => _setNormalized(c.normalized - d.delta.dy / 150),
       child: CustomPaint(
         size: Size.infinite,
-        painter: _KnobPainter(c.normalized, c.color,
-            label: c.value.toStringAsFixed(2)),
+        painter: _KnobPainter(
+          c.normalized,
+          c.color,
+          label: c.value.toStringAsFixed(2),
+        ),
       ),
     );
   }
@@ -194,13 +270,17 @@ class _SliderPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final track = Paint()..color = color.withValues(alpha: 0.15);
     final fill = Paint()..color = color;
-    final r =
-        RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(4));
+    final r = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(4),
+    );
     canvas.clipRRect(r);
     canvas.drawRect(Offset.zero & size, track);
     if (horizontal) {
       canvas.drawRect(
-          Rect.fromLTWH(0, 0, size.width * normalized, size.height), fill);
+        Rect.fromLTWH(0, 0, size.width * normalized, size.height),
+        fill,
+      );
     } else {
       final h = size.height * normalized;
       canvas.drawRect(Rect.fromLTWH(0, size.height - h, size.width, h), fill);
@@ -210,6 +290,50 @@ class _SliderPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SliderPainter old) =>
       old.normalized != normalized || old.color != color;
+}
+
+class _MeterPainter extends CustomPainter {
+  _MeterPainter(this.normalized, {required this.horizontal});
+
+  final double normalized;
+  final bool horizontal;
+
+  // Green for most of the range, then yellow, then red at the top.
+  static const _colors = [
+    Colors.green,
+    Colors.green,
+    Colors.yellow,
+    Colors.red,
+  ];
+  static const _stops = [0.0, 0.6, 0.85, 1.0];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final full = Offset.zero & size;
+    canvas.clipRRect(RRect.fromRectAndRadius(full, const Radius.circular(4)));
+    canvas.drawRect(full, Paint()..color = Colors.white10);
+
+    final gradient = LinearGradient(
+      begin: horizontal ? Alignment.centerLeft : Alignment.bottomCenter,
+      end: horizontal ? Alignment.centerRight : Alignment.topCenter,
+      colors: _colors,
+      stops: _stops,
+    );
+    final level = horizontal
+        ? Rect.fromLTWH(0, 0, size.width * normalized, size.height)
+        : Rect.fromLTWH(
+            0,
+            size.height * (1 - normalized),
+            size.width,
+            size.height * normalized,
+          );
+    // The shader spans the whole meter so colors stay fixed by position.
+    canvas.drawRect(level, Paint()..shader = gradient.createShader(full));
+  }
+
+  @override
+  bool shouldRepaint(_MeterPainter old) =>
+      old.normalized != normalized || old.horizontal != horizontal;
 }
 
 class _KnobPainter extends CustomPainter {
@@ -242,7 +366,12 @@ class _KnobPainter extends CustomPainter {
     final rect = Rect.fromCircle(center: center, radius: radius);
     canvas.drawArc(rect, startAngle, sweepTotal, false, trackPaint);
     canvas.drawArc(
-        rect, startAngle, sweepTotal * normalized, false, valuePaint);
+      rect,
+      startAngle,
+      sweepTotal * normalized,
+      false,
+      valuePaint,
+    );
 
     // Pointer line
     final angle = startAngle + sweepTotal * normalized;
@@ -251,12 +380,16 @@ class _KnobPainter extends CustomPainter {
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(
-        center,
-        center + Offset(math.cos(angle), math.sin(angle)) * (radius - 8),
-        pointer);
+      center,
+      center + Offset(math.cos(angle), math.sin(angle)) * (radius - 8),
+      pointer,
+    );
 
     final tp = TextPainter(
-      text: TextSpan(text: label, style: TextStyle(color: color, fontSize: 10)),
+      text: TextSpan(
+        text: label,
+        style: TextStyle(color: color, fontSize: 10),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, center + Offset(-tp.width / 2, radius - tp.height + 4));

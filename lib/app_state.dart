@@ -61,8 +61,11 @@ class AppState extends ChangeNotifier {
   void controlChanged(OscControl control, double newValue, {bool send = true}) {
     control.value = newValue.clamp(control.min, control.max);
     if (send) {
-      _osc.send(OscMessage(control.address, [control.value]),
-          settings.targetIp, settings.targetPort);
+      _osc.send(
+        OscMessage(control.address, [control.value]),
+        settings.targetIp,
+        settings.targetPort,
+      );
     }
     notifyListeners();
     _saveDebounced();
@@ -73,6 +76,14 @@ class AppState extends ChangeNotifier {
   void toggleEditMode() {
     editMode = !editMode;
     if (editMode) hideBars = false;
+    _applyOrientation();
+    notifyListeners();
+    _save();
+  }
+
+  void toggleEditInPortrait() {
+    settings.editInPortrait = !settings.editInPortrait;
+    _applyOrientation();
     notifyListeners();
     _save();
   }
@@ -88,7 +99,8 @@ class AppState extends ChangeNotifier {
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       type: type,
       name: type.label,
-      address: '/page${currentPageIndex + 1}/control${page.controls.length + 1}',
+      address:
+          '/page${currentPageIndex + 1}/control${page.controls.length + 1}',
     );
     _placeInFreeSpot(control, page);
     page.controls.add(control);
@@ -111,9 +123,16 @@ class AppState extends ChangeNotifier {
   bool _overlapsAny(OscControl control, OscPage page) {
     for (final other in page.controls) {
       if (other.id == control.id) continue;
-      final overlapX = control.gridX < other.gridX + other.gridW &&
+      // Shapes group other controls, so only shapes block other shapes.
+      if ((other.type == ControlType.shape) !=
+          (control.type == ControlType.shape)) {
+        continue;
+      }
+      final overlapX =
+          control.gridX < other.gridX + other.gridW &&
           other.gridX < control.gridX + control.gridW;
-      final overlapY = control.gridY < other.gridY + other.gridH &&
+      final overlapY =
+          control.gridY < other.gridY + other.gridH &&
           other.gridY < control.gridY + control.gridH;
       if (overlapX && overlapY) return true;
     }
@@ -135,8 +154,9 @@ class AppState extends ChangeNotifier {
     control.gridX = control.gridX.clamp(0, page.gridCols - control.gridW);
     control.gridY = control.gridY.clamp(0, page.gridRows - control.gridH);
     control.value = control.value.clamp(
-        control.min <= control.max ? control.min : control.max,
-        control.min <= control.max ? control.max : control.min);
+      control.min <= control.max ? control.min : control.max,
+      control.min <= control.max ? control.max : control.min,
+    );
     notifyListeners();
     _save();
   }
@@ -192,8 +212,12 @@ class AppState extends ChangeNotifier {
   }
 
   void _applyOrientation() {
+    // Optionally edit landscape pages in portrait: more room for typing.
+    final landscape =
+        currentPage.orientation == PageOrientation.landscape &&
+        !(editMode && settings.editInPortrait);
     SystemChrome.setPreferredOrientations(
-      currentPage.orientation == PageOrientation.landscape
+      landscape
           ? [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
           : [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown],
     );
@@ -202,9 +226,9 @@ class AppState extends ChangeNotifier {
   // ---- export / import ----
 
   String exportJson() => const JsonEncoder.withIndent('  ').convert({
-        'settings': settings.toJson(),
-        'pages': pages.map((p) => p.toJson()).toList(),
-      });
+    'settings': settings.toJson(),
+    'pages': pages.map((p) => p.toJson()).toList(),
+  });
 
   /// Returns null on success, or an error message.
   String? importJson(String raw) {
@@ -215,8 +239,9 @@ class AppState extends ChangeNotifier {
           .toList();
       if (loadedPages.isEmpty) return 'File contains no pages';
       if (json['settings'] is Map<String, dynamic>) {
-        settings =
-            AppSettings.fromJson(json['settings'] as Map<String, dynamic>);
+        settings = AppSettings.fromJson(
+          json['settings'] as Map<String, dynamic>,
+        );
         _osc.bind(settings.listenPort);
       }
       pages
@@ -232,8 +257,11 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> updateSettings(
-      {String? targetIp, int? targetPort, int? listenPort}) async {
+  Future<void> updateSettings({
+    String? targetIp,
+    int? targetPort,
+    int? listenPort,
+  }) async {
     if (targetIp != null) settings.targetIp = targetIp;
     if (targetPort != null) settings.targetPort = targetPort;
     if (listenPort != null && listenPort != settings.listenPort) {
@@ -255,11 +283,12 @@ class AppState extends ChangeNotifier {
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        'project',
-        jsonEncode({
-          'settings': settings.toJson(),
-          'pages': pages.map((p) => p.toJson()).toList(),
-        }));
+      'project',
+      jsonEncode({
+        'settings': settings.toJson(),
+        'pages': pages.map((p) => p.toJson()).toList(),
+      }),
+    );
   }
 
   Future<void> _load() async {
@@ -268,8 +297,7 @@ class AppState extends ChangeNotifier {
     if (raw == null) return;
     try {
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      settings =
-          AppSettings.fromJson(json['settings'] as Map<String, dynamic>);
+      settings = AppSettings.fromJson(json['settings'] as Map<String, dynamic>);
       final loadedPages = (json['pages'] as List<dynamic>)
           .map((p) => OscPage.fromJson(p as Map<String, dynamic>))
           .toList();

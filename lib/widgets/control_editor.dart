@@ -19,19 +19,29 @@ const _palette = <Color>[
 
 /// Bottom sheet for editing a control's properties.
 /// Returns 'delete' if the control should be removed, 'ok' if saved.
-Future<String?> showControlEditor(BuildContext context, OscControl control,
-    {int gridCols = kGridCols, int gridRows = kGridRows}) {
+Future<String?> showControlEditor(
+  BuildContext context,
+  OscControl control, {
+  int gridCols = kGridCols,
+  int gridRows = kGridRows,
+}) {
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
-    builder: (context) =>
-        _ControlEditor(control: control, gridCols: gridCols, gridRows: gridRows),
+    builder: (context) => _ControlEditor(
+      control: control,
+      gridCols: gridCols,
+      gridRows: gridRows,
+    ),
   );
 }
 
 class _ControlEditor extends StatefulWidget {
-  const _ControlEditor(
-      {required this.control, required this.gridCols, required this.gridRows});
+  const _ControlEditor({
+    required this.control,
+    required this.gridCols,
+    required this.gridRows,
+  });
 
   final OscControl control;
   final int gridCols;
@@ -93,22 +103,29 @@ class _ControlEditorState extends State<_ControlEditor> {
     Navigator.pop(context, 'ok');
   }
 
-  Widget _stepper(String label, int value, int minV, int maxV,
-      void Function(int) onChanged) {
+  Widget _stepper(
+    String label,
+    int value,
+    int minV,
+    int maxV,
+    void Function(int) onChanged,
+  ) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(width: 56, child: Text(label)),
         IconButton(
           icon: const Icon(Icons.remove_circle_outline),
-          onPressed:
-              value > minV ? () => setState(() => onChanged(value - 1)) : null,
+          onPressed: value > minV
+              ? () => setState(() => onChanged(value - 1))
+              : null,
         ),
         SizedBox(width: 24, child: Text('$value', textAlign: TextAlign.center)),
         IconButton(
           icon: const Icon(Icons.add_circle_outline),
-          onPressed:
-              value < maxV ? () => setState(() => onChanged(value + 1)) : null,
+          onPressed: value < maxV
+              ? () => setState(() => onChanged(value + 1))
+              : null,
         ),
       ],
     );
@@ -117,8 +134,9 @@ class _ControlEditorState extends State<_ControlEditor> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -128,8 +146,10 @@ class _ControlEditorState extends State<_ControlEditor> {
             Row(
               children: [
                 Expanded(
-                  child: Text(c.type.label,
-                      style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    c.type.label,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -141,42 +161,58 @@ class _ControlEditorState extends State<_ControlEditor> {
             const SizedBox(height: 8),
             TextField(
               controller: _name,
-              decoration: const InputDecoration(
-                  labelText: 'Name (shown on screen)',
-                  border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: c.type == ControlType.text
+                    ? 'Text'
+                    : 'Name (shown on screen)',
+                border: const OutlineInputBorder(),
+              ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _address,
-              decoration: const InputDecoration(
-                  labelText: 'OSC address',
+            if (!c.type.isDecoration) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _address,
+                decoration: InputDecoration(
+                  labelText: c.type.isMeter
+                      ? 'OSC address (received)'
+                      : 'OSC address',
                   hintText: '/fader1',
-                  border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _min,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                    decoration: const InputDecoration(
-                        labelText: 'Min value', border: OutlineInputBorder()),
-                  ),
+                  border: const OutlineInputBorder(),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _max,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                    decoration: const InputDecoration(
-                        labelText: 'Max value', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _min,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Min value',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _max,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Max value',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             const Text('Color'),
             const SizedBox(height: 8),
@@ -208,14 +244,34 @@ class _ControlEditorState extends State<_ControlEditor> {
             const Text('Position & size (grid cells)'),
             Wrap(
               children: [
-                _stepper('Col', _gridX, 0, widget.gridCols - _gridW,
-                    (v) => _gridX = v),
-                _stepper('Row', _gridY, 0, widget.gridRows - _gridH,
-                    (v) => _gridY = v),
-                _stepper('Width', _gridW, 1, widget.gridCols - _gridX,
-                    (v) => _gridW = v),
-                _stepper('Height', _gridH, 1, widget.gridRows - _gridY,
-                    (v) => _gridH = v),
+                _stepper(
+                  'Col',
+                  _gridX,
+                  0,
+                  widget.gridCols - _gridW,
+                  (v) => _gridX = v,
+                ),
+                _stepper(
+                  'Row',
+                  _gridY,
+                  0,
+                  widget.gridRows - _gridH,
+                  (v) => _gridY = v,
+                ),
+                _stepper(
+                  'Width',
+                  _gridW,
+                  1,
+                  widget.gridCols - _gridX,
+                  (v) => _gridW = v,
+                ),
+                _stepper(
+                  'Height',
+                  _gridH,
+                  1,
+                  widget.gridRows - _gridY,
+                  (v) => _gridH = v,
+                ),
               ],
             ),
             const SizedBox(height: 16),

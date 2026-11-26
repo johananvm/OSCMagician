@@ -50,7 +50,7 @@ class OscMessage {
       offset = o1;
       if (!address.startsWith('/')) return null;
       var typeTags = '';
-      if (offset < data.length && data[offset] == 0x2C /* ',' */) {
+      if (offset < data.length && data[offset] == 0x2C /* ',' */ ) {
         final (tags, o2) = _readString(data, offset);
         typeTags = tags.substring(1);
         offset = o2;

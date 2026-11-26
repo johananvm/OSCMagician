@@ -21,8 +21,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final state = context.read<AppState>();
     _ip = TextEditingController(text: state.settings.targetIp);
     _port = TextEditingController(text: state.settings.targetPort.toString());
-    _listenPort =
-        TextEditingController(text: state.settings.listenPort.toString());
+    _listenPort = TextEditingController(
+      text: state.settings.listenPort.toString(),
+    );
     state.refreshLocalIps();
   }
 
@@ -48,8 +49,9 @@ class _SettingsPageState extends State<SettingsPage> {
     FocusScope.of(context).unfocus();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Settings applied'),
-          duration: Duration(seconds: 1)),
+        content: Text('Settings applied'),
+        duration: Duration(seconds: 1),
+      ),
     );
   }
 
@@ -85,8 +87,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Receive OSC on this device',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Receive OSC on this device',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _listenPort,
@@ -109,8 +113,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const Icon(Icons.wifi, size: 20),
                       const SizedBox(width: 8),
-                      Text('This device',
-                          style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        'This device',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.refresh, size: 20),
@@ -127,7 +133,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       SelectableText(
                         '$ip : ${state.settings.listenPort}',
                         style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                   const SizedBox(height: 4),
                   Text(
@@ -136,8 +144,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   if (state.oscError != null) ...[
                     const SizedBox(height: 8),
-                    Text(state.oscError!,
-                        style: const TextStyle(color: Colors.red)),
+                    Text(
+                      state.oscError!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ],
                 ],
               ),

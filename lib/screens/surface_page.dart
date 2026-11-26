@@ -9,6 +9,7 @@ import '../app_state.dart';
 import '../models.dart';
 import '../widgets/control_editor.dart';
 import '../widgets/control_widget.dart';
+import 'settings_page.dart';
 
 /// The OSC control surface: a grid of controls with edit/play modes
 /// and page navigation at the bottom.
@@ -19,21 +20,25 @@ class SurfacePage extends StatelessWidget {
     final type = await showModalBottomSheet<ControlType>(
       context: context,
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text('Add control',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            for (final t in ControlType.values)
-              ListTile(
-                leading: Icon(_iconFor(t)),
-                title: Text(t.label),
-                onTap: () => Navigator.pop(context, t),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  'Add control',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-          ],
+              for (final t in ControlType.values)
+                ListTile(
+                  leading: Icon(_iconFor(t)),
+                  title: Text(t.label),
+                  onTap: () => Navigator.pop(context, t),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -41,19 +46,30 @@ class SurfacePage extends StatelessWidget {
   }
 
   static IconData _iconFor(ControlType t) => switch (t) {
-        ControlType.hSlider => Icons.swap_horiz,
-        ControlType.vSlider => Icons.swap_vert,
-        ControlType.pushButton => Icons.radio_button_checked,
-        ControlType.holdButton => Icons.touch_app,
-        ControlType.toggleButton => Icons.power_settings_new,
-        ControlType.knob => Icons.tune,
-      };
+    ControlType.hSlider => Icons.swap_horiz,
+    ControlType.vSlider => Icons.swap_vert,
+    ControlType.pushButton => Icons.radio_button_checked,
+    ControlType.holdButton => Icons.touch_app,
+    ControlType.toggleButton => Icons.power_settings_new,
+    ControlType.knob => Icons.tune,
+    ControlType.hMeter => Icons.linear_scale,
+    ControlType.vMeter => Icons.equalizer,
+    ControlType.text => Icons.text_fields,
+    ControlType.shape => Icons.crop_square,
+  };
 
   Future<void> _editControl(
-      BuildContext context, AppState state, OscControl control) async {
+    BuildContext context,
+    AppState state,
+    OscControl control,
+  ) async {
     final page = state.currentPage;
-    final result = await showControlEditor(context, control,
-        gridCols: page.gridCols, gridRows: page.gridRows);
+    final result = await showControlEditor(
+      context,
+      control,
+      gridCols: page.gridCols,
+      gridRows: page.gridRows,
+    );
     if (result == 'delete') {
       state.removeControl(control);
     } else if (result == 'ok') {
@@ -72,7 +88,8 @@ class SurfacePage extends StatelessWidget {
       );
       if (uri != null) {
         messenger.showSnackBar(
-            const SnackBar(content: Text('Screens exported')));
+          const SnackBar(content: Text('Screens exported')),
+        );
       }
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
@@ -91,42 +108,51 @@ class SurfacePage extends StatelessWidget {
       final bytes = await file.readAsBytes();
       final error = state.importJson(utf8.decode(bytes));
       messenger.showSnackBar(
-          SnackBar(content: Text(error ?? 'Screens imported')));
+        SnackBar(content: Text(error ?? 'Screens imported')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Import failed: $e')));
     }
   }
 
-  Future<void> _pageMenu(BuildContext context, AppState state, int index) async {
+  Future<void> _pageMenu(
+    BuildContext context,
+    AppState state,
+    int index,
+  ) async {
     final page = state.pages[index];
     final isLandscape = page.orientation == PageOrientation.landscape;
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Rename page'),
-              onTap: () => Navigator.pop(context, 'rename'),
-            ),
-            ListTile(
-              leading: Icon(isLandscape
-                  ? Icons.stay_current_portrait
-                  : Icons.stay_current_landscape),
-              title: Text(isLandscape
-                  ? 'Switch to portrait'
-                  : 'Switch to landscape'),
-              onTap: () => Navigator.pop(context, 'orientation'),
-            ),
-            if (state.pages.length > 1)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Delete page'),
-                onTap: () => Navigator.pop(context, 'delete'),
+                leading: const Icon(Icons.edit),
+                title: const Text('Rename page'),
+                onTap: () => Navigator.pop(context, 'rename'),
               ),
-          ],
+              ListTile(
+                leading: Icon(
+                  isLandscape
+                      ? Icons.stay_current_portrait
+                      : Icons.stay_current_landscape,
+                ),
+                title: Text(
+                  isLandscape ? 'Switch to portrait' : 'Switch to landscape',
+                ),
+                onTap: () => Navigator.pop(context, 'orientation'),
+              ),
+              if (state.pages.length > 1)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Delete page'),
+                  onTap: () => Navigator.pop(context, 'delete'),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -135,10 +161,9 @@ class SurfacePage extends StatelessWidget {
       state.removePage(index);
     } else if (action == 'orientation') {
       state.setPageOrientation(
-          index,
-          isLandscape
-              ? PageOrientation.portrait
-              : PageOrientation.landscape);
+        index,
+        isLandscape ? PageOrientation.portrait : PageOrientation.landscape,
+      );
     } else if (action == 'rename') {
       final controller = TextEditingController(text: state.pages[index].name);
       final name = await showDialog<String>(
@@ -148,11 +173,13 @@ class SurfacePage extends StatelessWidget {
           content: TextField(controller: controller, autofocus: true),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(context, controller.text.trim()),
-                child: const Text('OK')),
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('OK'),
+            ),
           ],
         ),
       );
@@ -167,6 +194,7 @@ class SurfacePage extends StatelessWidget {
     final fullscreen = state.hideBars && !state.editMode;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: fullscreen
           ? null
           : AppBar(
@@ -177,6 +205,19 @@ class SurfacePage extends StatelessWidget {
                     icon: const Icon(Icons.add),
                     tooltip: 'Add control',
                     onPressed: () => _addControl(context, state),
+                  ),
+                if (state.editMode &&
+                    page.orientation == PageOrientation.landscape)
+                  IconButton(
+                    icon: Icon(
+                      state.settings.editInPortrait
+                          ? Icons.stay_current_landscape
+                          : Icons.stay_current_portrait,
+                    ),
+                    tooltip: state.settings.editInPortrait
+                        ? 'Edit in landscape'
+                        : 'Edit in portrait',
+                    onPressed: state.toggleEditInPortrait,
                   ),
                 if (!state.editMode)
                   IconButton(
@@ -193,6 +234,13 @@ class SurfacePage extends StatelessWidget {
                   onSelected: (action) {
                     if (action == 'export') _export(context, state);
                     if (action == 'import') _import(context, state);
+                    if (action == 'settings') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const SettingsPage(),
+                        ),
+                      );
+                    }
                   },
                   itemBuilder: (context) => const [
                     PopupMenuItem(
@@ -209,104 +257,151 @@ class SurfacePage extends StatelessWidget {
                         title: Text('Import screens'),
                       ),
                     ),
+                    PopupMenuDivider(),
+                    PopupMenuItem(
+                      value: 'settings',
+                      child: ListTile(
+                        leading: Icon(Icons.settings),
+                        title: Text('Settings'),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
       body: SafeArea(
         child: LayoutBuilder(
-          builder: (context, constraints) {
-            final cellW = constraints.maxWidth / page.gridCols;
-            final cellH = constraints.maxHeight / page.gridRows;
-            return Stack(
-              children: [
-                if (state.editMode)
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _GridPainter(cellW, cellH),
-                    ),
-                  ),
-                for (final control in page.controls)
-                  Positioned(
-                    left: control.gridX * cellW,
-                    top: control.gridY * cellH,
-                    width: control.gridW * cellW,
-                    height: control.gridH * cellH,
-                    child: state.editMode
-                        ? _EditableControl(
-                            control: control,
-                            cellW: cellW,
-                            cellH: cellH,
-                            onTap: () => _editControl(context, state, control),
-                            onMoved: (x, y) => state.moveControl(control, x, y),
-                          )
-                        : ControlWidget(
-                            control: control,
-                            enabled: true,
-                            onChanged: (v) => state.controlChanged(control, v),
-                          ),
-                  ),
-                if (page.controls.isEmpty)
-                  Center(
-                    child: Text(
-                      state.editMode
-                          ? 'Tap + to add a control'
-                          : 'No controls yet.\nTap the pencil to edit.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade500),
-                    ),
-                  ),
-                // Compact overlay to switch pages / exit fullscreen.
-                if (fullscreen)
-                  Positioned(
-                    right: 4,
-                    bottom: 4,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black45,
-                        borderRadius: BorderRadius.circular(20),
+          builder: (context, outer) {
+            final grid = LayoutBuilder(
+              builder: (context, constraints) {
+                final cellW = constraints.maxWidth / page.gridCols;
+                final cellH = constraints.maxHeight / page.gridRows;
+                return Stack(
+                  children: [
+                    if (state.editMode)
+                      Positioned.fill(
+                        child: CustomPaint(painter: _GridPainter(cellW, cellH)),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (state.pages.length > 1)
-                            for (var i = 0; i < state.pages.length; i++)
-                              GestureDetector(
-                                onTap: () => state.selectPage(i),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6),
-                                  child: CircleAvatar(
-                                    radius: 10,
-                                    backgroundColor:
-                                        i == state.currentPageIndex
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
+                    // Shapes first so they sit behind the controls they group.
+                    for (final control in [
+                      ...page.controls.where(
+                        (c) => c.type == ControlType.shape,
+                      ),
+                      ...page.controls.where(
+                        (c) => c.type != ControlType.shape,
+                      ),
+                    ])
+                      Positioned(
+                        left: control.gridX * cellW,
+                        top: control.gridY * cellH,
+                        width: control.gridW * cellW,
+                        height: control.gridH * cellH,
+                        child: state.editMode
+                            ? _EditableControl(
+                                control: control,
+                                cellW: cellW,
+                                cellH: cellH,
+                                onTap: () =>
+                                    _editControl(context, state, control),
+                                onMoved: (x, y) =>
+                                    state.moveControl(control, x, y),
+                              )
+                            : ControlWidget(
+                                control: control,
+                                enabled: true,
+                                onChanged: (v) =>
+                                    state.controlChanged(control, v),
+                              ),
+                      ),
+                    if (page.controls.isEmpty)
+                      Center(
+                        child: Text(
+                          state.editMode
+                              ? 'Tap + to add a control'
+                              : 'No controls yet.\nTap the pencil to edit.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      ),
+                    // Compact overlay to switch pages / exit fullscreen.
+                    if (fullscreen)
+                      Positioned(
+                        right: 4,
+                        bottom: 4,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (state.pages.length > 1)
+                                for (var i = 0; i < state.pages.length; i++)
+                                  GestureDetector(
+                                    onTap: () => state.selectPage(i),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6),
+                                      child: CircleAvatar(
+                                        radius: 10,
+                                        backgroundColor:
+                                            i == state.currentPageIndex
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
                                             : Colors.white24,
-                                    child: Text(
-                                      '${i + 1}',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: i == state.currentPageIndex
-                                            ? Colors.black87
-                                            : Colors.white,
+                                        child: Text(
+                                          '${i + 1}',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: i == state.currentPageIndex
+                                                ? Colors.black87
+                                                : Colors.white,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(
+                                  Icons.fullscreen_exit,
+                                  size: 20,
                                 ),
+                                tooltip: 'Show bars',
+                                onPressed: state.toggleHideBars,
                               ),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            icon: const Icon(Icons.fullscreen_exit, size: 20),
-                            tooltip: 'Show bars',
-                            onPressed: state.toggleHideBars,
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                  ],
+                );
+              },
+            );
+            // Editing a landscape page on a portrait screen: show the page at
+            // the shape it gets in landscape Play mode with bars visible. The
+            // bars take the same space in both orientations, so measure them
+            // here in portrait and subtract them from the landscape size.
+            final landscapeInPortrait =
+                page.orientation == PageOrientation.landscape &&
+                outer.maxWidth < outer.maxHeight;
+            if (!landscapeInPortrait) return grid;
+            final screen = MediaQuery.sizeOf(context);
+            final playW = screen.height - (screen.width - outer.maxWidth);
+            final playH = screen.width - (screen.height - outer.maxHeight);
+            if (playH <= 0) return grid;
+            return Center(
+              child: AspectRatio(
+                aspectRatio: playW / playH,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white24),
                   ),
-              ],
+                  child: grid,
+                ),
+              ),
             );
           },
         ),
@@ -314,46 +409,48 @@ class SurfacePage extends StatelessWidget {
       bottomNavigationBar: fullscreen
           ? null
           : SafeArea(
-        child: Container(
-          height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < state.pages.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: ChoiceChip(
-                            label: Text(state.pages[i].name),
-                            selected: i == state.currentPageIndex,
-                            onSelected: (_) => state.selectPage(i),
-                          ),
+              child: Container(
+                height: 52,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < state.pages.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: ChoiceChip(
+                                  label: Text(state.pages[i].name),
+                                  selected: i == state.currentPageIndex,
+                                  onSelected: (_) => state.selectPage(i),
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
+                    ),
+                    if (state.editMode) ...[
+                      IconButton(
+                        icon: const Icon(Icons.more_vert),
+                        tooltip: 'Page options',
+                        onPressed: () =>
+                            _pageMenu(context, state, state.currentPageIndex),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_box_outlined),
+                        tooltip: 'Add page',
+                        onPressed: state.addPage,
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-              if (state.editMode) ...[
-                IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'Page options',
-                  onPressed: () =>
-                      _pageMenu(context, state, state.currentPageIndex),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_box_outlined),
-                  tooltip: 'Add page',
-                  onPressed: state.addPage,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
@@ -439,8 +536,11 @@ class _EditableControlState extends State<_EditableControl> {
                       BoxShadow(color: Colors.black54, blurRadius: 4),
                     ],
                   ),
-                  child: const Icon(Icons.edit,
-                      size: 15, color: Colors.black87),
+                  child: const Icon(
+                    Icons.edit,
+                    size: 15,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
             ),
@@ -462,11 +562,15 @@ class _GridPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.white12
       ..strokeWidth = 1;
-    for (var x = 0.0; x <= size.width + 0.5; x += cellW) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    if (cellW > 0) {
+      for (var x = 0.0; x <= size.width + 0.5; x += cellW) {
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      }
     }
-    for (var y = 0.0; y <= size.height + 0.5; y += cellH) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    if (cellH > 0) {
+      for (var y = 0.0; y <= size.height + 0.5; y += cellH) {
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      }
     }
   }
 

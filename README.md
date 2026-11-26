@@ -28,7 +28,8 @@ in, and artifacts expire according to repository retention settings).
 
 Push a `v*` tag (for example, `v1.0.0`) to also publish the APK as a GitHub
 Release. Branch builds use the version name in `pubspec.yaml`; release tags use
-the tag without the `v`. Both use the workflow run number as Android's version
+the tag without the `v`. The APK filename includes that version, for example
+`OSCMagician1.0.2.apk`. Both use the workflow run number as Android's version
 code, so an older build cannot normally be installed over a newer one.
 
 Configure these repository Actions secrets before pushing:
