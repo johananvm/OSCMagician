@@ -1,4 +1,4 @@
-package com.oscmagician.osc_magician
+package com.oscmagician
 
 import io.flutter.embedding.android.FlutterActivity
 

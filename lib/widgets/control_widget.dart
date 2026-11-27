@@ -25,6 +25,7 @@ class ControlWidget extends StatefulWidget {
 
 class _ControlWidgetState extends State<ControlWidget> {
   OscControl get c => widget.control;
+  int? _pressedPointer;
 
   void _setNormalized(double n) {
     final clamped = n.clamp(0.0, 1.0);
@@ -146,13 +147,16 @@ class _ControlWidgetState extends State<ControlWidget> {
       builder: (context, constraints) => Center(
         child: FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
-            empty ? 'Label' : c.name,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: (constraints.maxHeight * 0.5).clamp(10.0, 64.0),
-              color: empty ? c.color.withValues(alpha: 0.4) : c.color,
-              fontWeight: FontWeight.w600,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            child: Text(
+              empty ? 'Label' : c.name,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: (constraints.maxHeight * 0.5).clamp(10.0, 64.0),
+                color: empty ? c.color.withValues(alpha: 0.4) : c.color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -191,33 +195,7 @@ class _ControlWidgetState extends State<ControlWidget> {
 
   Widget _buildButton(_ButtonKind kind) {
     final on = c.isOn;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: !widget.enabled
-          ? null
-          : (_) {
-              switch (kind) {
-                case _ButtonKind.push:
-                case _ButtonKind.hold:
-                  widget.onChanged(c.max);
-                case _ButtonKind.toggle:
-                  widget.onChanged(on ? c.min : c.max);
-              }
-            },
-      onTapUp: !widget.enabled
-          ? null
-          : (_) {
-              if (kind != _ButtonKind.toggle) widget.onChanged(c.min);
-            },
-      onTapCancel: !widget.enabled
-          ? null
-          : () {
-              if (kind != _ButtonKind.toggle) widget.onChanged(c.min);
-            },
-      onLongPressEnd: !widget.enabled || kind == _ButtonKind.toggle
-          ? null
-          : (_) => widget.onChanged(c.min),
-      child: AnimatedContainer(
+    final body = AnimatedContainer(
         duration: const Duration(milliseconds: 80),
         decoration: BoxDecoration(
           color: on ? c.color : c.color.withValues(alpha: 0.15),
@@ -233,8 +211,36 @@ class _ControlWidgetState extends State<ControlWidget> {
           color: on ? Colors.black87 : c.color,
           size: 20,
         ),
-      ),
     );
+    if (kind == _ButtonKind.toggle) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: widget.enabled
+            ? (_) => widget.onChanged(on ? c.min : c.max)
+            : null,
+        child: body,
+      );
+    }
+
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: widget.enabled
+          ? (event) {
+              if (_pressedPointer != null) return;
+              _pressedPointer = event.pointer;
+              widget.onChanged(c.max);
+            }
+          : null,
+      onPointerUp: (event) => _releaseButton(event.pointer),
+      onPointerCancel: (event) => _releaseButton(event.pointer),
+      child: body,
+    );
+  }
+
+  void _releaseButton(int pointer) {
+    if (_pressedPointer != pointer) return;
+    _pressedPointer = null;
+    widget.onChanged(c.min);
   }
 
   // ---- knob ----

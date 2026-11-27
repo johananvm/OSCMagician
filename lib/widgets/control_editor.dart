@@ -58,6 +58,7 @@ class _ControlEditorState extends State<_ControlEditor> {
   late final TextEditingController _max;
   late Color _color;
   late int _gridX, _gridY, _gridW, _gridH;
+  late bool _receiveOscText;
 
   OscControl get c => widget.control;
 
@@ -69,6 +70,7 @@ class _ControlEditorState extends State<_ControlEditor> {
     _min = TextEditingController(text: _num(c.min));
     _max = TextEditingController(text: _num(c.max));
     _color = c.color;
+    _receiveOscText = c.receiveOscText;
     _gridX = c.gridX;
     _gridY = c.gridY;
     _gridW = c.gridW;
@@ -93,6 +95,7 @@ class _ControlEditorState extends State<_ControlEditor> {
     if (addr.isEmpty) addr = '/control';
     if (!addr.startsWith('/')) addr = '/$addr';
     c.address = addr;
+    c.receiveOscText = _receiveOscText;
     c.min = double.tryParse(_min.text.replaceAll(',', '.')) ?? c.min;
     c.max = double.tryParse(_max.text.replaceAll(',', '.')) ?? c.max;
     c.color = _color;
@@ -161,6 +164,11 @@ class _ControlEditorState extends State<_ControlEditor> {
             const SizedBox(height: 8),
             TextField(
               controller: _name,
+              minLines: 1,
+              maxLines: c.type == ControlType.text ? 4 : 1,
+              keyboardType: c.type == ControlType.text
+                  ? TextInputType.multiline
+                  : TextInputType.text,
               decoration: InputDecoration(
                 labelText: c.type == ControlType.text
                     ? 'Text'
@@ -168,18 +176,28 @@ class _ControlEditorState extends State<_ControlEditor> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            if (!c.type.isDecoration) ...[
+            if (c.type == ControlType.text)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Update text from OSC'),
+                value: _receiveOscText,
+                onChanged: (value) => setState(() => _receiveOscText = value),
+              ),
+            if (!c.type.isDecoration ||
+                (c.type == ControlType.text && _receiveOscText)) ...[
               const SizedBox(height: 12),
               TextField(
                 controller: _address,
                 decoration: InputDecoration(
-                  labelText: c.type.isMeter
+                  labelText: c.type.isMeter || c.type == ControlType.text
                       ? 'OSC address (received)'
                       : 'OSC address',
                   hintText: '/fader1',
                   border: const OutlineInputBorder(),
                 ),
               ),
+            ],
+            if (!c.type.isDecoration) ...[
               const SizedBox(height: 12),
               Row(
                 children: [

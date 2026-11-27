@@ -21,7 +21,7 @@ enum ControlType {
   const ControlType(this.label);
   final String label;
 
-  /// Labels and shapes are purely visual: no OSC address or value.
+  /// Labels and shapes have no numeric value controls.
   bool get isDecoration => this == text || this == shape;
 
   bool get isMeter => this == hMeter || this == vMeter;
@@ -33,6 +33,7 @@ class OscControl {
     required this.type,
     this.name = '',
     this.address = '/control',
+    this.receiveOscText = false,
     this.min = 0.0,
     this.max = 1.0,
     this.color = Colors.teal,
@@ -50,6 +51,7 @@ class OscControl {
   ControlType type;
   String name;
   String address;
+  bool receiveOscText;
   double min;
   double max;
   Color color;
@@ -96,6 +98,7 @@ class OscControl {
     'type': type.name,
     'name': name,
     'address': address,
+    'receiveOscText': receiveOscText,
     'min': min,
     'max': max,
     'color': color.toARGB32(),
@@ -114,6 +117,7 @@ class OscControl {
     ),
     name: json['name'] as String? ?? '',
     address: json['address'] as String? ?? '/control',
+    receiveOscText: json['receiveOscText'] as bool? ?? false,
     min: (json['min'] as num?)?.toDouble() ?? 0.0,
     max: (json['max'] as num?)?.toDouble() ?? 1.0,
     color: Color(json['color'] as int? ?? Colors.teal.toARGB32()),

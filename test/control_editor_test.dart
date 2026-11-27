@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:osc_magician/app_state.dart';
@@ -190,6 +191,74 @@ void main() {
     expect(find.text('OSC address'), findsOneWidget);
   });
 
+  testWidgets('long press selects a fully covered shape for editing', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState(OscService())..editMode = true;
+    addTearDown(state.dispose);
+    final shape = OscControl(
+      id: 'shape',
+      type: ControlType.shape,
+      name: 'Group',
+      gridW: 4,
+      gridH: 2,
+    );
+    state.currentPage.controls.addAll([
+      shape,
+      OscControl(
+        id: 'shape2',
+        type: ControlType.shape,
+        name: 'Other group',
+        gridW: 4,
+        gridH: 2,
+      ),
+      OscControl(
+        id: 'slider',
+        type: ControlType.hSlider,
+        name: 'Fader',
+        gridW: 4,
+        gridH: 2,
+      ),
+    ]);
+
+    await tester.pumpWidget(OscMagicianApp(state: state));
+    await tester.pumpAndSettle();
+    final slider = find.byWidgetPredicate(
+      (widget) => widget is ControlWidget && widget.control.id == 'slider',
+    );
+    await tester.longPressAt(tester.getCenter(slider));
+    await tester.pumpAndSettle();
+    expect(find.text('Select control to edit'), findsOneWidget);
+    expect(find.text('Other group'), findsWidgets);
+    await tester.tap(find.widgetWithText(ListTile, 'Group'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Name (shown on screen)'),
+      'Updated group',
+    );
+    final col = find.ancestor(of: find.text('Col'), matching: find.byType(Row));
+    final add = find.descendant(
+      of: col.first,
+      matching: find.byIcon(Icons.add_circle_outline),
+    );
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(shape.name, 'Updated group');
+    expect(shape.gridX, 1);
+
+    await tester.tapAt(tester.getCenter(slider) + const Offset(0, 8));
+    await tester.pumpAndSettle();
+    expect(find.text('OSC address'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Name (shown on screen)'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('label editor hides OSC fields', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final state = AppState(OscService())..editMode = true;
@@ -203,6 +272,90 @@ void main() {
     expect(find.widgetWithText(TextField, 'Text'), findsOneWidget);
     expect(find.text('OSC address'), findsNothing);
     expect(find.text('Min value'), findsNothing);
+  });
+
+  testWidgets('label editor enables OSC and saves multiline text', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState(OscService())..editMode = true;
+    addTearDown(state.dispose);
+    state.addControl(ControlType.text);
+    final control = state.currentPage.controls.single;
+
+    await tester.pumpWidget(OscMagicianApp(state: state));
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.byType(ControlWidget)));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Text'),
+      'First line\nSecond line',
+    );
+    await tester.tap(find.text('Update text from OSC'));
+    await tester.pumpAndSettle();
+    final address = find.widgetWithText(TextField, 'OSC address (received)');
+    await tester.ensureVisible(address);
+    await tester.enterText(address, 'status');
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(control.name, 'First line\nSecond line');
+    expect(control.address, '/status');
+    expect(control.receiveOscText, isTrue);
+    expect(find.text('First line\nSecond line'), findsOneWidget);
+    final restored = OscControl.fromJson(control.toJson());
+    expect(restored.receiveOscText, isTrue);
+    expect(restored.address, '/status');
+    expect(restored.name, 'First line\nSecond line');
+    final oldJson = control.toJson()..remove('receiveOscText');
+    expect(OscControl.fromJson(oldJson).receiveOscText, isFalse);
+
+    await tester.tapAt(tester.getCenter(find.byType(ControlWidget)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update text from OSC'));
+    await tester.pumpAndSettle();
+    expect(find.text('OSC address (received)'), findsNothing);
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(control.receiveOscText, isFalse);
+    expect(control.address, '/status');
+  });
+
+  testWidgets('label wraps within its grid width', (tester) async {
+    final control = OscControl(
+      id: 'label',
+      type: ControlType.text,
+      name: 'one two three four five six',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 100,
+            height: 100,
+            child: ControlWidget(
+              control: control,
+              enabled: true,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.text(control.name),
+    );
+    expect(
+      paragraph
+          .getBoxesForSelection(
+            TextSelection(baseOffset: 0, extentOffset: control.name.length),
+          )
+          .length,
+      greaterThan(1),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   for (final type in ControlType.values) {

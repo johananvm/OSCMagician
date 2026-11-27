@@ -41,11 +41,17 @@ class AppState extends ChangeNotifier {
 
   void _onIncoming(OscMessage msg) {
     final v = msg.firstNumeric;
-    if (v == null) return;
+    final text = msg.arguments.whereType<String>().firstOrNull;
     var changed = false;
     for (final page in pages) {
       for (final control in page.controls) {
-        if (control.address == msg.address) {
+        if (control.address != msg.address) continue;
+        if (control.type == ControlType.text) {
+          if (control.receiveOscText && text != null && control.name != text) {
+            control.name = text;
+            changed = true;
+          }
+        } else if (!control.type.isDecoration && v != null) {
           control.value = v.clamp(control.min, control.max);
           changed = true;
         }

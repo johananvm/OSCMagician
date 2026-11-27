@@ -11,6 +11,11 @@ Get the latest APK from the
 open it on your Android device. You may need to allow installing apps from
 unknown sources.
 
+The Android package ID is `com.oscmagician`. Builds using the previous
+`com.oscmagician.osc_magician` ID install as a separate app and do not
+automatically transfer saved screens; export them first and import them into
+the new app.
+
 ## Website
 
 The static single-page website is in [website/](website/). Open
@@ -24,7 +29,8 @@ screenshots show a custom surface rendered by the app.
   scaled to the min/max you choose.
 - **Meters**: horizontal and vertical level meters (green to red) that show
   values received on their OSC address.
-- **Labels and shapes**: text and bordered boxes to annotate and group controls.
+- **Labels and shapes**: multiline text and bordered boxes to annotate and group
+  controls. Labels can optionally display incoming OSC strings.
 - **Two-way sync**: incoming OSC messages on a control's address update that
   control, so the surface follows changes made elsewhere.
 - **Multiple pages**, each in portrait or landscape. Landscape pages can be
@@ -40,9 +46,16 @@ screenshots show a custom surface rendered by the app.
 2. Tap the **pencil** to enter edit mode, then **+** to add a control.
 3. Drag controls to move them, and tap one to change its name, OSC address,
    value range, color, position and size.
+   To edit a shape behind another control, long-press the overlap and select
+   the shape. Its position and size can also be changed in the editor.
 4. Tap **play** to use the surface. Use the bar at the bottom to switch or add
    pages, and **⋮ (page options)** in edit mode to rename a page, delete it or
    switch its orientation.
+
+To update a label remotely, enable **Update text from OSC** in its editor and
+set the receive address. The first string argument of a matching message
+replaces the label text; newline characters and wrapping create multiple lines.
+Increase the label's grid height to give the text more room.
 
 ## Building from source
 

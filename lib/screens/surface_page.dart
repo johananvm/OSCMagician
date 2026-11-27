@@ -77,6 +77,61 @@ class SurfacePage extends StatelessWidget {
     }
   }
 
+  Future<void> _editControlAt(
+    BuildContext context,
+    AppState state,
+    double gridX,
+    double gridY,
+  ) async {
+    final controls = state.currentPage.controls
+        .where(
+          (c) =>
+              gridX >= c.gridX &&
+              gridX < c.gridX + c.gridW &&
+              gridY >= c.gridY &&
+              gridY < c.gridY + c.gridH,
+        )
+        .toList();
+    if (controls.length == 1) {
+      await _editControl(context, state, controls.single);
+    } else if (controls.isNotEmpty) {
+      final selected = await showModalBottomSheet<OscControl>(
+        context: context,
+        builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Select control to edit',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                for (final (index, control) in controls.indexed)
+                  ListTile(
+                    leading: Icon(_iconFor(control.type)),
+                    title: Text(
+                      control.name.isEmpty ? control.type.label : control.name,
+                    ),
+                    subtitle: Text(
+                      '#${index + 1} - ${control.type.label} - '
+                      'Col ${control.gridX}, Row ${control.gridY}',
+                    ),
+                    onTap: () => Navigator.pop(context, control),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (selected != null && context.mounted) {
+        await _editControl(context, state, selected);
+      }
+    }
+  }
+
   Future<void> _export(BuildContext context, AppState state) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -303,6 +358,12 @@ class SurfacePage extends StatelessWidget {
                                 cellH: cellH,
                                 onTap: () =>
                                     _editControl(context, state, control),
+                                onLongPress: (position) => _editControlAt(
+                                  context,
+                                  state,
+                                  control.gridX + position.dx / cellW,
+                                  control.gridY + position.dy / cellH,
+                                ),
                                 onMoved: (x, y) =>
                                     state.moveControl(control, x, y),
                               )
@@ -462,6 +523,7 @@ class _EditableControl extends StatefulWidget {
     required this.cellW,
     required this.cellH,
     required this.onTap,
+    required this.onLongPress,
     required this.onMoved,
   });
 
@@ -469,6 +531,7 @@ class _EditableControl extends StatefulWidget {
   final double cellW;
   final double cellH;
   final VoidCallback onTap;
+  final void Function(Offset position) onLongPress;
   final void Function(int gridX, int gridY) onMoved;
 
   @override
@@ -484,7 +547,7 @@ class _EditableControlState extends State<_EditableControl> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
-      onLongPress: widget.onTap,
+      onLongPressStart: (details) => widget.onLongPress(details.localPosition),
       onPanStart: (_) {
         _startX = widget.control.gridX;
         _startY = widget.control.gridY;
