@@ -11,6 +11,12 @@ Get the latest APK from the
 open it on your Android device. You may need to allow installing apps from
 unknown sources.
 
+## Website
+
+The static single-page website is in [website/](website/). Open
+[`index.html`](website/index.html) in a browser to preview it. Its example
+screenshots show a custom surface rendered by the app.
+
 ## Features
 
 - **Controls**: horizontal and vertical sliders, push, hold and toggle buttons,
