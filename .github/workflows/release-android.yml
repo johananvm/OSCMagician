@@ -47,7 +47,7 @@ jobs:
              [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
              [ -z "$ANDROID_KEY_ALIAS" ] || \
              [ -z "$ANDROID_KEY_PASSWORD" ]; then
-            echo "::error::Configure all four Android signing secrets before building the APK."
+            echo "::error::Configure all four Android signing secrets before building the APK and app bundle."
             exit 1
           fi
 
@@ -59,33 +59,42 @@ jobs:
             printf 'storeFile=../upload-keystore.jks\n'
           } > android/key.properties
 
-      - name: Build release APK
+      - name: Build release APK and app bundle
         run: |
+          build_args=(--build-number="$GITHUB_RUN_NUMBER")
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            flutter build apk --release \
-              --build-name="${GITHUB_REF_NAME#v}" \
-              --build-number="$GITHUB_RUN_NUMBER"
-          else
-            flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
+            build_args+=(--build-name="${GITHUB_REF_NAME#v}")
           fi
+          flutter build apk --release "${build_args[@]}"
+          flutter build appbundle --release "${build_args[@]}"
 
-      - name: Name APK
-        id: apk
+      - name: Name release files
+        id: packages
         run: |
           version="$(awk -F= '$1 == "flutter.versionName" { print substr($0, index($0, "=") + 1) }' android/local.properties)"
           if [[ ! "$version" =~ ^[a-zA-Z0-9][a-zA-Z0-9.+_-]*$ ]]; then
             echo "::error::Invalid or missing Android version name in android/local.properties."
             exit 1
           fi
-          path="build/app/outputs/flutter-apk/OSCMagician${version}.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk "$path"
-          echo "path=$path" >> "$GITHUB_OUTPUT"
+          apk_path="build/app/outputs/flutter-apk/OSCMagician${version}.apk"
+          bundle_path="build/app/outputs/bundle/release/OSCMagician${version}.aab"
+          cp build/app/outputs/flutter-apk/app-release.apk "$apk_path"
+          cp build/app/outputs/bundle/release/app-release.aab "$bundle_path"
+          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
+          echo "bundle_path=$bundle_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: osc-magician-apk
-          path: ${{ steps.apk.outputs.path }}
+          path: ${{ steps.packages.outputs.apk_path }}
+          if-no-files-found: error
+
+      - name: Upload app bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: osc-magician-appbundle
+          path: ${{ steps.packages.outputs.bundle_path }}
           if-no-files-found: error
 
       - name: Publish GitHub release
@@ -96,4 +105,6 @@ jobs:
           generate_release_notes: true
           make_latest: true
           overwrite_files: true
-          files: ${{ steps.apk.outputs.path }}
+          files: |
+            ${{ steps.packages.outputs.apk_path }}
+            ${{ steps.packages.outputs.bundle_path }}

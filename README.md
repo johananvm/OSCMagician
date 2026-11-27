@@ -66,9 +66,12 @@ flutter pub get
 flutter test
 flutter run            # on a connected device or emulator
 flutter build apk --release
+flutter build appbundle --release
 ```
 
 Without `android/key.properties`, release builds are signed with the debug key.
+The Android release workflow builds both an APK for direct installation and a
+signed app bundle (`.aab`) for Google Play, and attaches both to tagged releases.
 
 ## License
 
