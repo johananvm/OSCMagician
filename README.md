@@ -33,7 +33,9 @@ The [privacy policy](website/privacy.html) describes how the app handles data.
 - **Labels and shapes**: multiline text and bordered boxes to annotate and group
   controls. Labels can optionally display incoming OSC strings.
 - **Two-way sync**: incoming OSC messages on a control's address update that
-  control, so the surface follows changes made elsewhere.
+  control, so the surface follows changes made elsewhere. OSC bundles are
+  supported; their messages are processed immediately without scheduling
+  bundle timetags.
 - **Multiple pages**, each in portrait or landscape. Landscape pages can be
   edited with the phone held upright for easier typing.
 - **Fullscreen play mode** to hide the bars while performing.

@@ -88,6 +88,42 @@ class OscMessage {
     }
   }
 
+  /// Decodes a message or the messages contained in an OSC bundle.
+  ///
+  /// Bundle timetags are not scheduled; messages are returned immediately.
+  static List<OscMessage> decodePacket(Uint8List data) {
+    final pending = <Uint8List>[data];
+    final messages = <OscMessage>[];
+    while (pending.isNotEmpty) {
+      final packet = pending.removeLast();
+      final isBundle =
+          packet.length >= 8 &&
+          String.fromCharCodes(packet.take(8)) == '#bundle\u0000';
+      if (!isBundle) {
+        final message = decode(packet);
+        if (message == null) return [];
+        messages.add(message);
+        continue;
+      }
+      if (packet.length < 16) return [];
+      final bytes = ByteData.sublistView(packet);
+      final elements = <Uint8List>[];
+      var offset = 16;
+      while (offset < packet.length) {
+        if (packet.length - offset < 4) return [];
+        final size = bytes.getInt32(offset, Endian.big);
+        offset += 4;
+        if (size <= 0 || size % 4 != 0 || size > packet.length - offset) {
+          return [];
+        }
+        elements.add(Uint8List.sublistView(packet, offset, offset + size));
+        offset += size;
+      }
+      pending.addAll(elements.reversed);
+    }
+    return messages;
+  }
+
   static Uint8List _paddedString(String s) {
     final bytes = utf8.encode(s);
     final padded = Uint8List((bytes.length + 4) & ~3); // +1 null, pad to 4

@@ -31,8 +31,9 @@ class OscService {
         if (event == RawSocketEvent.read) {
           final datagram = socket.receive();
           if (datagram == null) return;
-          final msg = OscMessage.decode(datagram.data);
-          if (msg != null) _incoming.add(msg);
+          for (final msg in OscMessage.decodePacket(datagram.data)) {
+            _incoming.add(msg);
+          }
         }
       });
       _socket = socket;
