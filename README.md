@@ -21,6 +21,7 @@ the new app.
 The static single-page website is in [website/](website/). Open
 [`index.html`](website/index.html) in a browser to preview it. Its example
 screenshots show a custom surface rendered by the app.
+The [privacy policy](website/privacy.html) describes how the app handles data.
 
 ## Features
 
